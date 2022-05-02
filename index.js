@@ -37,6 +37,7 @@ async function run() {
     try {
         await client.connect();
         const productCollection = client.db("gadget").collection("products");
+        const orderCollection = client.db("gadget").collection("orders");
 
         app.post('/uploadproduct', async (req, res) => {
 
@@ -74,6 +75,14 @@ async function run() {
             const query = {}
             const cursor = productCollection.find(query)
             const result = await cursor.toArray()
+            res.send(result)
+        })
+
+        //oder products
+        app.post('/orders', async (req, res) => {
+            const orderInfo = req.body
+            //console.log(orderInfo)
+            const result = await orderCollection.insertOne(orderInfo);
             res.send(result)
         })
 
