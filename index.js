@@ -3,6 +3,7 @@ const app = express()
 const cors = require('cors')
 const port = process.env.PORT || 5000
 require('dotenv').config()
+const jwt = require('jsonwebtoken');
 
 // tastdb
 // 7ek1OWi5zCWorTIx
@@ -16,14 +17,63 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@jwt-tes
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
 
+function verifyToken(token) {
+    let email;
+    jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+        if (err) {
+            email = 'invalid email'
+        }
+        if (decoded) {
+            email = decoded
+            console.log("from function", decoded)
+        }
+    });
+    return email
+}
+
+
 async function run() {
+
     try {
         await client.connect();
         const productCollection = client.db("gadget").collection("products");
 
         app.post('/uploadproduct', async (req, res) => {
+
+            const tokenInfo = req.headers.authorization
+            //console.log(tokeninfo)
+            const [email, accessToken] = tokenInfo?.split(' ')
+            console.log(accessToken)
+
+            var decoded = verifyToken(accessToken)
+            //console.log('inner upload', decoded.email)
+
             const product = req.body
-            const result = await productCollection.insertOne(product);
+
+            if (email === decoded.email) {
+                const result = await productCollection.insertOne(product);
+                res.send(result)
+            } else {
+                res.send("unAuthorized 403")
+            }
+
+
+        })
+
+        //login a user
+        app.post("/login", (req, res) => {
+            const email = req.body
+
+            const token = jwt.sign(email, process.env.ACCESS_TOKEN);
+            res.send({ token })
+
+        })
+
+        //find all product
+        app.get('/products', async (req, res) => {
+            const query = {}
+            const cursor = productCollection.find(query)
+            const result = await cursor.toArray()
             res.send(result)
         })
 
